@@ -1,12 +1,10 @@
 const initSqlJs = require('sql.js');
-const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 const DB_TYPE = process.env.DB_TYPE || 'sqlite';
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'ecommerce.db');
-const dataDir = path.dirname(DB_PATH);
+const DB_PATH = path.join('/tmp', 'ecommerce.db');
 
 let dbEngine = 'sqlite';
 let sqliteDb = null;
@@ -18,27 +16,31 @@ function convertPlaceholders(sql) {
 }
 
 async function initializeDatabase() {
-  if (DB_TYPE === 'postgres') {
-    try {
-      pgPool = new Pool({
-        host: process.env.PGHOST || 'localhost',
-        port: parseInt(process.env.PGPORT || '5432'),
-        user: process.env.PGUSER || 'postgres',
-        password: process.env.PGPASSWORD || 'postgres',
-        database: process.env.PGDATABASE || 'ecommercedb',
-        connectionTimeoutMillis: 3000
-      });
+  if (sqliteDb || pgPool) return;
 
-      // Test connection
+  if (DB_TYPE === 'postgres' && (process.env.PGHOST || process.env.DATABASE_URL)) {
+    try {
+      const { Pool } = require('pg');
+      pgPool = new Pool(
+        process.env.DATABASE_URL
+          ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+          : {
+              host: process.env.PGHOST,
+              port: parseInt(process.env.PGPORT || '5432'),
+              user: process.env.PGUSER,
+              password: process.env.PGPASSWORD,
+              database: process.env.PGDATABASE,
+              connectionTimeoutMillis: 3000
+            }
+      );
+
       await pgPool.query('SELECT 1');
       dbEngine = 'postgres';
-      console.log(`\n🐘 Connected to local PostgreSQL database (${process.env.PGDATABASE || 'ecommercedb'})`);
+      console.log(' Connected to PostgreSQL database');
 
-      // Run schema
       const schema = fs.readFileSync(path.join(__dirname, '..', '..', 'schema.sql'), 'utf8');
       await pgPool.query(schema);
 
-      // Admin check
       const adminRes = await pgPool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
       if (adminRes.rows.length === 0) {
         const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -46,27 +48,18 @@ async function initializeDatabase() {
           "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)",
           ['Admin User', 'admin@ecommerce.com', hashedPassword, 'admin']
         );
-        console.log('✅ Default admin created in PostgreSQL: admin@ecommerce.com / admin123');
       }
       return;
     } catch (err) {
-      console.log(`\n⚠️ Local PostgreSQL not available (${err.message}). Falling back to SQLite...`);
+      console.log(`PostgreSQL connection notice (${err.message}). Using SQLite mode.`);
       dbEngine = 'sqlite';
     }
   }
 
-  // SQLite fallback
+  // SQLite mode (works in-memory & in serverless environment)
   const SQL = await initSqlJs();
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  if (fs.existsSync(DB_PATH)) {
-    const fileBuffer = fs.readFileSync(DB_PATH);
-    sqliteDb = new SQL.Database(fileBuffer);
-  } else {
-    sqliteDb = new SQL.Database();
-  }
+  sqliteDb = new SQL.Database();
+  dbEngine = 'sqlite';
 
   sqliteDb.run('PRAGMA foreign_keys = ON');
 
@@ -110,7 +103,7 @@ async function initializeDatabase() {
       payment_status TEXT DEFAULT 'unpaid', payment_method TEXT, shipping_name TEXT,
       shipping_address TEXT, shipping_city TEXT, shipping_phone TEXT, notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES orders(id) ON DELETE CASCADE
     )
   `);
 
@@ -175,30 +168,47 @@ async function initializeDatabase() {
     )
   `);
 
-  const adminCheck = sqliteDb.exec("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-  if (adminCheck.length === 0 || adminCheck[0].values.length === 0) {
-    const hashedPassword = bcrypt.hashSync('admin123', 10);
-    sqliteDb.run("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-      ['Admin User', 'admin@ecommerce.com', hashedPassword, 'admin']);
-  }
+  // Seed default admin & categories & products into memory
+  const hashedPassword = bcrypt.hashSync('admin123', 10);
+  sqliteDb.run("INSERT OR IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+    ['Admin User', 'admin@ecommerce.com', hashedPassword, 'admin']);
+
+  const custPassword = bcrypt.hashSync('password123', 10);
+  sqliteDb.run("INSERT OR IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+    ['John Customer', 'john@test.com', custPassword, 'customer']);
+
+  // Categories
+  sqliteDb.run("INSERT OR IGNORE INTO categories (id, name, slug, description, image) VALUES (1, 'Electronics', 'electronics', 'Smartphones, laptops', 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400')");
+  sqliteDb.run("INSERT OR IGNORE INTO categories (id, name, slug, description, image) VALUES (2, 'Fashion', 'fashion', 'Clothing and shoes', 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400')");
+  sqliteDb.run("INSERT OR IGNORE INTO categories (id, name, slug, description, image) VALUES (3, 'Home & Living', 'home-living', 'Furniture & decor', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400')");
+
+  // Sample products
+  sqliteDb.run(`INSERT OR IGNORE INTO products (id, name, slug, category_id, price, compare_price, stock, brand, description, image, is_featured, rating, num_reviews)
+    VALUES (1, 'Premium Wireless Headphones', 'premium-wireless-headphones', 1, 89.99, 129.99, 50, 'SoundMax', 'High-quality wireless headphones', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500', 1, 4.5, 128)`);
+  sqliteDb.run(`INSERT OR IGNORE INTO products (id, name, slug, category_id, price, compare_price, stock, brand, description, image, is_featured, rating, num_reviews)
+    VALUES (2, 'Smartphone Pro Max 15', 'smartphone-pro-max-15', 1, 999.99, 1199.99, 30, 'TechVision', 'Flagship smartphone', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500', 1, 4.7, 256)`);
+  sqliteDb.run(`INSERT OR IGNORE INTO products (id, name, slug, category_id, price, compare_price, stock, brand, description, image, is_featured, rating, num_reviews)
+    VALUES (3, 'Classic Leather Jacket', 'classic-leather-jacket', 2, 149.99, 199.99, 35, 'UrbanStyle', 'Genuine leather jacket', 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500', 1, 4.6, 56)`);
+  sqliteDb.run(`INSERT OR IGNORE INTO products (id, name, slug, category_id, price, compare_price, stock, brand, description, image, is_featured, rating, num_reviews)
+    VALUES (4, 'Running Shoes Air Max', 'running-shoes-air-max', 2, 119.99, 149.99, 45, 'SpeedFit', 'Cushioned running shoes', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500', 1, 4.4, 92)`);
 
   saveDatabase();
-  console.log('📦 Using SQLite Database engine');
 }
 
 function saveDatabase() {
   if (dbEngine === 'sqlite' && sqliteDb) {
-    const data = sqliteDb.export();
-    fs.writeFileSync(DB_PATH, Buffer.from(data));
+    try {
+      const data = sqliteDb.export();
+      fs.writeFileSync(DB_PATH, Buffer.from(data));
+    } catch {}
   }
 }
 
 async function getOne(sql, params = []) {
-  if (dbEngine === 'postgres') {
+  if (dbEngine === 'postgres' && pgPool) {
     const pgSql = convertPlaceholders(sql);
     const res = await pgPool.query(pgSql, params);
     if (res.rows[0]) {
-      // Cast numeric types for consistency
       const row = res.rows[0];
       for (const k in row) {
         if (typeof row[k] === 'string' && !isNaN(row[k]) && row[k].trim() !== '' && !row[k].includes('-')) {
@@ -226,7 +236,7 @@ async function getOne(sql, params = []) {
 }
 
 async function getAll(sql, params = []) {
-  if (dbEngine === 'postgres') {
+  if (dbEngine === 'postgres' && pgPool) {
     const pgSql = convertPlaceholders(sql);
     const res = await pgPool.query(pgSql, params);
     return res.rows.map(row => {
@@ -255,7 +265,7 @@ async function getAll(sql, params = []) {
 }
 
 async function runSql(sql, params = []) {
-  if (dbEngine === 'postgres') {
+  if (dbEngine === 'postgres' && pgPool) {
     let pgSql = convertPlaceholders(sql);
     if (pgSql.trim().toUpperCase().startsWith('INSERT') && !pgSql.toUpperCase().includes('RETURNING')) {
       pgSql += ' RETURNING id';
