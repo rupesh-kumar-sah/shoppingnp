@@ -307,3 +307,22 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCartCount();
   navigateTo('home');
 });
+
+function handleNewsletterSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('newsletter-email');
+  if (input && input.value) {
+    showToast(`Thank you! ${input.value} subscribed for exclusive deals.`, 'success');
+    input.value = '';
+  }
+}
+
+function handleSearchKeyUp(e) {
+  if (e.key === 'Enter') {
+    searchProducts();
+  }
+}
+
+window.handleNewsletterSubmit = handleNewsletterSubmit;
+window.handleSearchKeyUp = handleSearchKeyUp;
+

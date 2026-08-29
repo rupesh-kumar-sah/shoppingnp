@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - YourStore E-Commerce</title>
+  <meta name="description" content="YourStore Admin Control Panel. Manage orders, inventory, products, categories, coupons, and customer analytics.">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin Dashboard — YourStore</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="src/css/admin.css">
@@ -11,76 +15,84 @@
 <body>
   <div id="toast-container"></div>
 
-  <!-- Login Screen -->
+  <!-- Admin Login Screen -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
-      <div class="login-logo"><i class="fas fa-shield-alt"></i></div>
-      <h1>Admin Panel</h1>
-      <p>Sign in to manage your store</p>
+      <div class="login-header">
+        <div class="login-logo"><i class="fas fa-user-shield"></i></div>
+        <h2>Admin Portal</h2>
+        <p>Sign in to access control dashboard</p>
+      </div>
       <form onsubmit="adminLogin(event)">
-        <div class="form-group"><label>Email</label><input type="email" id="login-email" value="admin@ecommerce.com" required></div>
-        <div class="form-group"><label>Password</label><input type="password" id="login-password" value="admin123" required></div>
-        <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="admin@ecommerce.com" value="admin@ecommerce.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" value="admin123" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Sign In to Dashboard</button>
       </form>
     </div>
   </div>
 
-  <!-- Admin Layout -->
+  <!-- Admin Dashboard Layout -->
   <div id="admin-layout" class="admin-layout" style="display:none">
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <i class="fas fa-store"></i>
-        <span>Admin Panel</span>
+        <span>YourStore Admin</span>
       </div>
-      <nav class="sidebar-nav" id="sidebar-nav">
+      <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-page="dashboard" onclick="loadAdminPage('dashboard')">
-          <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+          <i class="fas fa-chart-line"></i> Dashboard
         </a>
         <a href="#" class="nav-item" data-page="products" onclick="loadAdminPage('products')">
-          <i class="fas fa-box"></i><span>Products</span>
+          <i class="fas fa-box"></i> Products
         </a>
         <a href="#" class="nav-item" data-page="orders" onclick="loadAdminPage('orders')">
-          <i class="fas fa-shopping-bag"></i><span>Orders</span>
+          <i class="fas fa-shopping-cart"></i> Orders
         </a>
         <a href="#" class="nav-item" data-page="users" onclick="loadAdminPage('users')">
-          <i class="fas fa-users"></i><span>Users</span>
+          <i class="fas fa-users"></i> Customers
         </a>
         <a href="#" class="nav-item" data-page="categories" onclick="loadAdminPage('categories')">
-          <i class="fas fa-tags"></i><span>Categories</span>
+          <i class="fas fa-tags"></i> Categories
         </a>
         <a href="#" class="nav-item" data-page="coupons" onclick="loadAdminPage('coupons')">
-          <i class="fas fa-ticket-alt"></i><span>Coupons</span>
+          <i class="fas fa-ticket-alt"></i> Coupons
         </a>
         <a href="#" class="nav-item" data-page="reviews" onclick="loadAdminPage('reviews')">
-          <i class="fas fa-star"></i><span>Reviews</span>
-        </a>
-        <div class="sidebar-divider"></div>
-        <a href="../customer/index.html" class="nav-item" target="_blank">
-          <i class="fas fa-external-link-alt"></i><span>Visit Store</span>
-        </a>
-        <a href="#" class="nav-item" onclick="adminLogout()">
-          <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+          <i class="fas fa-star"></i> Reviews
         </a>
       </nav>
+      <div class="sidebar-footer">
+        <a href="../index.html" class="nav-item" target="_blank">
+          <i class="fas fa-external-link-alt"></i> View Storefront
+        </a>
+      </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
       <header class="topbar">
-        <div class="topbar-left">
-          <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-          <h2 id="page-title">Dashboard</h2>
-        </div>
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <h2 id="page-title">Dashboard</h2>
         <div class="topbar-right">
-          <span id="admin-name">Admin</span>
-          <div class="admin-avatar" id="admin-avatar">A</div>
+          <div class="user-badge">
+            <div class="avatar" id="admin-avatar">A</div>
+            <span id="admin-name">Admin</span>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="adminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
       </header>
-      <div class="content-area" id="content-area">
-        <!-- Dynamic content -->
-      </div>
-    </main>
+
+      <main class="content" id="content-area">
+        <!-- Rendered dynamically -->
+      </main>
+    </div>
   </div>
 
   <script src="src/js/admin.js"></script>
