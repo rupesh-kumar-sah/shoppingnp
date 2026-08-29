@@ -1,7 +1,6 @@
 const serverless = require('serverless-http');
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
 const app = express();
 
@@ -11,7 +10,7 @@ app.use(express.urlencoded({ extended: true }));
 
 let databaseModule;
 try {
-  databaseModule = require('../../backend/src/models/database');
+  databaseModule = require('./src/models/database');
 } catch (e) {
   console.error('Failed loading database module:', e);
 }
@@ -27,14 +26,14 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Mount routes with path stripping for Netlify
-const authRouter = require('../../backend/src/routes/auth');
-const productsRouter = require('../../backend/src/routes/products');
-const categoriesRouter = require('../../backend/src/routes/categories');
-const cartRouter = require('../../backend/src/routes/cart');
-const ordersRouter = require('../../backend/src/routes/orders');
-const wishlistRouter = require('../../backend/src/routes/wishlist');
-const adminRouter = require('../../backend/src/routes/admin');
+// Mount routes
+const authRouter = require('./src/routes/auth');
+const productsRouter = require('./src/routes/products');
+const categoriesRouter = require('./src/routes/categories');
+const cartRouter = require('./src/routes/cart');
+const ordersRouter = require('./src/routes/orders');
+const wishlistRouter = require('./src/routes/wishlist');
+const adminRouter = require('./src/routes/admin');
 
 app.use(['/api/auth', '/.netlify/functions/api/auth', '/auth'], authRouter);
 app.use(['/api/products', '/.netlify/functions/api/products', '/products'], productsRouter);
@@ -48,7 +47,6 @@ app.get(['/api/health', '/.netlify/functions/api/health', '/health'], (req, res)
   res.json({ status: 'OK', message: 'Backend REST API connected & online' });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('API Error:', err);
   res.status(500).json({ error: err.message || 'Internal Server Error' });
