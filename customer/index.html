@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="YourStore - Premium E-Commerce Platform. Browse, shop, and discover the best products at unbeatable prices.">
+  <title>YourStore - Premium Online Shopping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="src/css/style.css">
+</head>
+<body>
+  <!-- Notification Toast -->
+  <div id="toast-container"></div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-content">
+          <span><i class="fas fa-truck"></i> Free Shipping on orders over $50</span>
+          <div class="header-top-links">
+            <a href="#" onclick="navigateTo('orders')">Track Order</a>
+            <a href="#" onclick="navigateTo('wishlist')">Wishlist</a>
+            <span id="auth-links"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="header-main">
+      <div class="container">
+        <div class="header-main-content">
+          <a href="#" class="logo" onclick="navigateTo('home')">
+            <i class="fas fa-store"></i> YourStore
+          </a>
+          <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search for products, brands..." onkeypress="if(event.key==='Enter') searchProducts()">
+            <button onclick="searchProducts()"><i class="fas fa-search"></i></button>
+          </div>
+          <div class="header-actions">
+            <a href="#" class="header-action" onclick="navigateTo('wishlist')" title="Wishlist">
+              <i class="far fa-heart"></i>
+              <span>Wishlist</span>
+            </a>
+            <a href="#" class="header-action cart-icon" onclick="navigateTo('cart')" title="Cart">
+              <i class="fas fa-shopping-cart"></i>
+              <span>Cart</span>
+              <span class="cart-badge" id="cart-badge">0</span>
+            </a>
+            <a href="#" class="header-action" id="user-menu-btn" onclick="toggleUserMenu()" title="Account">
+              <i class="fas fa-user-circle"></i>
+              <span id="user-name-display">Account</span>
+            </a>
+            <div class="user-dropdown" id="user-dropdown"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <div class="container">
+        <div class="nav-links" id="nav-categories">
+          <a href="#" class="nav-link active" onclick="navigateTo('home')"><i class="fas fa-home"></i> Home</a>
+          <a href="#" class="nav-link" onclick="navigateTo('products')"><i class="fas fa-th-large"></i> All Products</a>
+          <a href="#" class="nav-link" onclick="loadByCategory('electronics')"><i class="fas fa-laptop"></i> Electronics</a>
+          <a href="#" class="nav-link" onclick="loadByCategory('fashion')"><i class="fas fa-tshirt"></i> Fashion</a>
+          <a href="#" class="nav-link" onclick="loadByCategory('home-living')"><i class="fas fa-couch"></i> Home & Living</a>
+          <a href="#" class="nav-link deals-link" onclick="loadFeaturedProducts()"><i class="fas fa-tags"></i> Deals</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    <!-- Pages will be rendered here dynamically -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-main">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h3><i class="fas fa-store"></i> YourStore</h3>
+            <p>Your one-stop destination for premium products at unbeatable prices. Quality, trust, and fast delivery guaranteed.</p>
+            <div class="social-links">
+              <a href="#"><i class="fab fa-facebook-f"></i></a>
+              <a href="#"><i class="fab fa-twitter"></i></a>
+              <a href="#"><i class="fab fa-instagram"></i></a>
+              <a href="#"><i class="fab fa-youtube"></i></a>
+            </div>
+          </div>
+          <div class="footer-col">
+            <h4>Quick Links</h4>
+            <a href="#" onclick="navigateTo('home')">Home</a>
+            <a href="#" onclick="navigateTo('products')">All Products</a>
+            <a href="#" onclick="loadByCategory('electronics')">Electronics</a>
+            <a href="#" onclick="loadByCategory('fashion')">Fashion</a>
+          </div>
+          <div class="footer-col">
+            <h4>Customer Service</h4>
+            <a href="#">Contact Us</a>
+            <a href="#">FAQs</a>
+            <a href="#">Shipping Policy</a>
+            <a href="#">Returns & Refunds</a>
+          </div>
+          <div class="footer-col">
+            <h4>Newsletter</h4>
+            <p>Subscribe for exclusive deals and updates.</p>
+            <div class="newsletter-form">
+              <input type="email" placeholder="Your email address">
+              <button><i class="fas fa-paper-plane"></i></button>
+            </div>
+            <div class="payment-methods">
+              <i class="fab fa-cc-visa"></i>
+              <i class="fab fa-cc-mastercard"></i>
+              <i class="fab fa-cc-paypal"></i>
+              <i class="fab fa-cc-apple-pay"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <p>&copy; 2024 YourStore. All rights reserved. Built with ❤️</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('login-modal')">&times;</button>
+      <div class="modal-header">
+        <h2 id="auth-modal-title">Welcome Back</h2>
+        <p id="auth-modal-subtitle">Sign in to your account</p>
+      </div>
+      <form id="auth-form" onsubmit="handleAuth(event)">
+        <div id="name-field" class="form-group" style="display:none">
+          <label>Full Name</label>
+          <input type="text" id="auth-name" placeholder="Enter your full name">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="auth-email" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="password-input">
+            <input type="password" id="auth-password" placeholder="Enter your password" required>
+            <button type="button" onclick="togglePassword()"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div id="phone-field" class="form-group" style="display:none">
+          <label>Phone Number</label>
+          <input type="tel" id="auth-phone" placeholder="Enter phone number">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button>
+        <p class="auth-switch">
+          <span id="auth-switch-text">Don't have an account?</span>
+          <a href="#" id="auth-switch-link" onclick="toggleAuthMode(event)">Create Account</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script src="src/js/api.js"></script>
+  <script src="src/js/store.js"></script>
+  <script src="src/js/components.js"></script>
+  <script src="src/js/pages.js"></script>
+  <script src="src/js/app.js"></script>
+</body>
+</html>

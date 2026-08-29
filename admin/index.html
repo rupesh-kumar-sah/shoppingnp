@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - YourStore E-Commerce</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="src/css/admin.css">
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo"><i class="fas fa-shield-alt"></i></div>
+      <h1>Admin Panel</h1>
+      <p>Sign in to manage your store</p>
+      <form onsubmit="adminLogin(event)">
+        <div class="form-group"><label>Email</label><input type="email" id="login-email" value="admin@ecommerce.com" required></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-password" value="admin123" required></div>
+        <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Layout -->
+  <div id="admin-layout" class="admin-layout" style="display:none">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-store"></i>
+        <span>Admin Panel</span>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard" onclick="loadAdminPage('dashboard')">
+          <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="products" onclick="loadAdminPage('products')">
+          <i class="fas fa-box"></i><span>Products</span>
+        </a>
+        <a href="#" class="nav-item" data-page="orders" onclick="loadAdminPage('orders')">
+          <i class="fas fa-shopping-bag"></i><span>Orders</span>
+        </a>
+        <a href="#" class="nav-item" data-page="users" onclick="loadAdminPage('users')">
+          <i class="fas fa-users"></i><span>Users</span>
+        </a>
+        <a href="#" class="nav-item" data-page="categories" onclick="loadAdminPage('categories')">
+          <i class="fas fa-tags"></i><span>Categories</span>
+        </a>
+        <a href="#" class="nav-item" data-page="coupons" onclick="loadAdminPage('coupons')">
+          <i class="fas fa-ticket-alt"></i><span>Coupons</span>
+        </a>
+        <a href="#" class="nav-item" data-page="reviews" onclick="loadAdminPage('reviews')">
+          <i class="fas fa-star"></i><span>Reviews</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="../customer/index.html" class="nav-item" target="_blank">
+          <i class="fas fa-external-link-alt"></i><span>Visit Store</span>
+        </a>
+        <a href="#" class="nav-item" onclick="adminLogout()">
+          <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+          <h2 id="page-title">Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <span id="admin-name">Admin</span>
+          <div class="admin-avatar" id="admin-avatar">A</div>
+        </div>
+      </header>
+      <div class="content-area" id="content-area">
+        <!-- Dynamic content -->
+      </div>
+    </main>
+  </div>
+
+  <script src="src/js/admin.js"></script>
+</body>
+</html>

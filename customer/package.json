@@ -1,0 +1,9 @@
+{
+  "name": "ecommerce-customer",
+  "version": "1.0.0",
+  "description": "E-Commerce Customer Frontend",
+  "scripts": {
+    "dev": "npx -y live-server --port=3000 --no-browser",
+    "start": "npx -y live-server --port=3000"
+  }
+}
