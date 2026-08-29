@@ -1,7 +1,7 @@
-// Dynamic API Base URL detection for Local & Production Deployment (Vercel / Render / Netlify)
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:5000/api'
-  : (window.API_URL || 'https://your-backend-api.onrender.com/api');
+// Dynamic API Base URL detection for Local & Production Deployment (Netlify / Vercel / Render)
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== ''
+  ? `http://${window.location.hostname}:5000/api`
+  : '/api';
 
 async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('accessToken');
