@@ -1,10 +1,11 @@
 [build]
   command = "npm install"
   publish = "customer"
-  functions = "backend/functions"
+  functions = "netlify/functions"
 
 [functions]
-  included_files = ["node_modules/sql.js/dist/sql-wasm.wasm"]
+  directory = "netlify/functions"
+  included_files = ["backend/src/**", "backend/schema.sql", "node_modules/sql.js/dist/sql-wasm.wasm"]
 
 [build.environment]
   NODE_VERSION = "20"
