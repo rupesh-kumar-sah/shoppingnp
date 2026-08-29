@@ -3,6 +3,9 @@
   publish = "customer"
   functions = "backend/functions"
 
+[functions]
+  included_files = ["node_modules/sql.js/dist/sql-wasm.wasm"]
+
 [build.environment]
   NODE_VERSION = "20"
 

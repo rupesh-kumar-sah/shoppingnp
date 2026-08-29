@@ -57,7 +57,10 @@ async function initializeDatabase() {
   }
 
   // SQLite mode (works in-memory & in serverless environment)
-  const SQL = await initSqlJs();
+  const wasmPath = path.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const locateFile = () => fs.existsSync(wasmPath) ? wasmPath : undefined;
+
+  const SQL = await initSqlJs({ locateFile });
   sqliteDb = new SQL.Database();
   dbEngine = 'sqlite';
 
