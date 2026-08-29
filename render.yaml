@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: ecommerce-backend-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: postgres
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: PGHOST
+        fromDatabase:
+          name: ecommerce-postgres-db
+          property: host
+      - key: PGUSER
+        fromDatabase:
+          name: ecommerce-postgres-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: ecommerce-postgres-db
+          property: password
+      - key: PGDATABASE
+        fromDatabase:
+          name: ecommerce-postgres-db
+          property: database
+
+databases:
+  - name: ecommerce-postgres-db
+    databaseName: ecommercedb
+    user: ecommerce_user
