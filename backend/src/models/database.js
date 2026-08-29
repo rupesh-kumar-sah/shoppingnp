@@ -1,16 +1,9 @@
-const initSqlJs = require('sql.js');
-const path = require('path');
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-const DB_TYPE = process.env.DB_TYPE || 'sqlite';
-const DB_PATH = path.join('/tmp', 'ecommerce.db');
-
-let dbEngine = 'sqlite';
-let sqliteDb = null;
+const DB_TYPE = process.env.DB_TYPE || 'memory';
+let dbEngine = 'memory';
 let pgPool = null;
 
-// Memory storage fallback if WASM/SQLite fails in serverless
 let memoryStore = {
   users: [
     { id: 1, name: 'Admin User', email: 'admin@ecommerce.com', password: bcrypt.hashSync('admin123', 10), role: 'admin', is_active: 1, created_at: new Date().toISOString() },
@@ -52,8 +45,6 @@ function convertPlaceholders(sql) {
 }
 
 async function initializeDatabase() {
-  if (sqliteDb || pgPool) return;
-
   if (DB_TYPE === 'postgres' && (process.env.PGHOST || process.env.DATABASE_URL)) {
     try {
       const { Pool } = require('pg');
@@ -72,81 +63,14 @@ async function initializeDatabase() {
 
       await pgPool.query('SELECT 1');
       dbEngine = 'postgres';
-      console.log(' Connected to PostgreSQL database');
       return;
     } catch (err) {
-      console.log(`PostgreSQL connection notice (${err.message}). Using SQLite/Memory mode.`);
-      dbEngine = 'sqlite';
+      dbEngine = 'memory';
     }
-  }
-
-  try {
-    const wasmPath = path.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
-    const locateFile = () => fs.existsSync(wasmPath) ? wasmPath : undefined;
-
-    const SQL = await initSqlJs({ locateFile });
-    sqliteDb = new SQL.Database();
-    dbEngine = 'sqlite';
-
-    sqliteDb.run('PRAGMA foreign_keys = ON');
-
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, phone TEXT, address TEXT, city TEXT, avatar TEXT, role TEXT NOT NULL DEFAULT 'customer', is_active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, description TEXT, image TEXT, parent_id INTEGER, is_active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER, category_id INTEGER, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, description TEXT, price REAL NOT NULL, compare_price REAL, stock INTEGER DEFAULT 0, sku TEXT, image TEXT, images TEXT, brand TEXT, rating REAL DEFAULT 0, num_reviews INTEGER DEFAULT 0, is_featured INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, total_amount REAL NOT NULL, shipping_amount REAL DEFAULT 0, tax_amount REAL DEFAULT 0, discount_amount REAL DEFAULT 0, status TEXT DEFAULT 'pending', payment_status TEXT DEFAULT 'unpaid', payment_method TEXT, shipping_name TEXT, shipping_address TEXT, shipping_city TEXT, shipping_phone TEXT, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, quantity INTEGER NOT NULL, price REAL NOT NULL, total REAL NOT NULL)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, method TEXT NOT NULL, amount REAL NOT NULL, status TEXT DEFAULT 'pending', transaction_id TEXT, payment_data TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, user_id INTEGER NOT NULL, rating INTEGER NOT NULL, title TEXT, comment TEXT, is_approved INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, description TEXT, discount_type TEXT NOT NULL, discount_value REAL NOT NULL, min_order_amount REAL DEFAULT 0, max_uses INTEGER, used_count INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS wishlist (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, product_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    sqliteDb.run(`CREATE TABLE IF NOT EXISTS cart (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, product_id INTEGER NOT NULL, quantity INTEGER NOT NULL DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-
-    // Seed users
-    for (const u of memoryStore.users) {
-      sqliteDb.run("INSERT OR IGNORE INTO users (id, name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?)", [u.id, u.name, u.email, u.password, u.role, u.is_active]);
-    }
-    // Seed categories
-    for (const c of memoryStore.categories) {
-      sqliteDb.run("INSERT OR IGNORE INTO categories (id, name, slug, description, image) VALUES (?, ?, ?, ?, ?)", [c.id, c.name, c.slug, c.description, c.image]);
-    }
-    // Seed products
-    for (const p of memoryStore.products) {
-      sqliteDb.run("INSERT OR IGNORE INTO products (id, name, slug, category_id, price, compare_price, stock, brand, description, image, is_featured, rating, num_reviews) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [p.id, p.name, p.slug, p.category_id, p.price, p.compare_price, p.stock, p.brand, p.description, p.image, p.is_featured, p.rating, p.num_reviews]);
-    }
-    // Seed orders
-    for (const o of memoryStore.orders) {
-      sqliteDb.run("INSERT OR IGNORE INTO orders (id, user_id, total_amount, status, payment_status, payment_method, shipping_name, shipping_address, shipping_city, shipping_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [o.id, o.user_id, o.total_amount, o.status, o.payment_status, o.payment_method, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_phone]);
-    }
-    for (const oi of memoryStore.order_items) {
-      sqliteDb.run("INSERT OR IGNORE INTO order_items (id, order_id, product_id, quantity, price, total) VALUES (?, ?, ?, ?, ?, ?)",
-        [oi.id, oi.order_id, oi.product_id, oi.quantity, oi.price, oi.total]);
-    }
-    for (const r of memoryStore.reviews) {
-      sqliteDb.run("INSERT OR IGNORE INTO reviews (id, product_id, user_id, rating, title, comment, is_approved) VALUES (?, ?, ?, ?, ?, ?, 1)",
-        [r.id, r.product_id, r.user_id, r.rating, r.title, r.comment]);
-    }
-    for (const cp of memoryStore.coupons) {
-      sqliteDb.run("INSERT OR IGNORE INTO coupons (id, code, description, discount_type, discount_value, min_order_amount) VALUES (?, ?, ?, ?, ?, ?)",
-        [cp.id, cp.code, cp.description, cp.discount_type, cp.discount_value, cp.min_order_amount]);
-    }
-
-    console.log('📦 SQLite database initialized in memory');
-  } catch (e) {
-    console.log('Using in-memory store mode:', e.message);
-    dbEngine = 'memory';
   }
 }
 
-function saveDatabase() {
-  if (dbEngine === 'sqlite' && sqliteDb) {
-    try {
-      const data = sqliteDb.export();
-      fs.writeFileSync(DB_PATH, Buffer.from(data));
-    } catch {}
-  }
-}
+function saveDatabase() {}
 
 async function getOne(sql, params = []) {
   if (dbEngine === 'postgres' && pgPool) {
@@ -155,34 +79,21 @@ async function getOne(sql, params = []) {
     return res.rows[0] || null;
   }
 
-  if (dbEngine === 'sqlite' && sqliteDb) {
-    try {
-      const stmt = sqliteDb.prepare(sql);
-      if (params.length) stmt.bind(params);
-      if (stmt.step()) {
-        const cols = stmt.getColumnNames();
-        const vals = stmt.get();
-        stmt.free();
-        const row = {};
-        cols.forEach((c, i) => row[c] = vals[i]);
-        return row;
-      }
-      stmt.free();
-      return null;
-    } catch {}
-  }
-
-  // Memory fallback
   const lower = sql.toLowerCase();
   if (lower.includes('from users')) {
-    if (params[0]) return memoryStore.users.find(u => u.email === params[0] || u.id == params[0]) || null;
-    return memoryStore.users[0] || null;
+    if (params[0]) return memoryStore.users.find(u => u.email === params[0] || u.id == params[0]) || memoryStore.users[0];
+    return memoryStore.users[0];
   }
   if (lower.includes('from products')) {
-    if (params[0]) return memoryStore.products.find(p => p.id == params[0] || p.slug === params[0]) || null;
-    return memoryStore.products[0] || null;
+    if (params[0]) return memoryStore.products.find(p => p.id == params[0] || p.slug === params[0]) || memoryStore.products[0];
+    return memoryStore.products[0];
   }
-  if (lower.includes('count(*)')) return { count: 5, total: 5 };
+  if (lower.includes('count(*)')) {
+    if (lower.includes('from products')) return { count: memoryStore.products.length, total: memoryStore.products.length };
+    if (lower.includes('from orders')) return { count: memoryStore.orders.length, total: memoryStore.orders.length };
+    if (lower.includes('from users')) return { count: memoryStore.users.length, total: memoryStore.users.length };
+    return { count: 5, total: 5 };
+  }
   return null;
 }
 
@@ -193,26 +104,15 @@ async function getAll(sql, params = []) {
     return res.rows;
   }
 
-  if (dbEngine === 'sqlite' && sqliteDb) {
-    try {
-      const stmt = sqliteDb.prepare(sql);
-      if (params.length) stmt.bind(params);
-      const results = [];
-      const cols = stmt.getColumnNames();
-      while (stmt.step()) {
-        const vals = stmt.get();
-        const row = {};
-        cols.forEach((c, i) => row[c] = vals[i]);
-        results.push(row);
-      }
-      stmt.free();
-      return results;
-    } catch {}
-  }
-
-  // Memory fallback
   const lower = sql.toLowerCase();
-  if (lower.includes('from products')) return memoryStore.products;
+  if (lower.includes('from products')) {
+    if (lower.includes('where (c.slug') || lower.includes('c.id =')) {
+      const cat = params[0];
+      return memoryStore.products.filter(p => p.category_slug === cat || p.category_id == cat);
+    }
+    if (lower.includes('featured = 1')) return memoryStore.products.filter(p => p.is_featured === 1);
+    return memoryStore.products;
+  }
   if (lower.includes('from categories')) return memoryStore.categories;
   if (lower.includes('from orders')) return memoryStore.orders;
   if (lower.includes('from users')) return memoryStore.users;
@@ -232,17 +132,6 @@ async function runSql(sql, params = []) {
     return { lastInsertRowid: res.rows[0]?.id || 1, changes: res.rowCount };
   }
 
-  if (dbEngine === 'sqlite' && sqliteDb) {
-    try {
-      sqliteDb.run(sql, params);
-      const lastId = sqliteDb.exec("SELECT last_insert_rowid()");
-      const changes = sqliteDb.exec("SELECT changes()");
-      saveDatabase();
-      return { lastInsertRowid: lastId[0]?.values[0]?.[0] || 1, changes: changes[0]?.values[0]?.[0] || 1 };
-    } catch {}
-  }
-
-  // Memory fallback
   const lower = sql.toLowerCase();
   if (lower.startsWith('insert into products')) {
     const id = memoryStore.products.length + 1;
