@@ -6,6 +6,10 @@ const API = (window.location.hostname === 'localhost' || window.location.hostnam
 let adminToken = localStorage.getItem('adminToken');
 let adminUser = JSON.parse(localStorage.getItem('adminUser') || 'null');
 
+function formatMoney(val, decimals = 2) {
+  return Number(val || 0).toFixed(decimals);
+}
+
 // ===== API =====
 async function adminApi(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -89,27 +93,30 @@ async function loadDashboard() {
 
   try {
     const data = await adminApi('/admin/dashboard');
-    const s = data.stats;
+    const s = data.stats || {};
+    const monthlySales = data.monthlySales || [];
+    const recentOrders = data.recentOrders || [];
+    const topProducts = data.topProducts || [];
 
-    const maxRevenue = Math.max(...data.monthlySales.map(m => m.revenue), 1);
+    const maxRevenue = Math.max(...monthlySales.map(m => Number(m.revenue || 0)), 1);
 
     area.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon blue"><i class="fas fa-box"></i></div>
-          <div><div class="stat-value">${s.totalProducts}</div><div class="stat-label">Total Products</div></div>
+          <div><div class="stat-value">${s.totalProducts || 0}</div><div class="stat-label">Total Products</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon green"><i class="fas fa-shopping-bag"></i></div>
-          <div><div class="stat-value">${s.totalOrders}</div><div class="stat-label">Total Orders</div></div>
+          <div><div class="stat-value">${s.totalOrders || 0}</div><div class="stat-label">Total Orders</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon purple"><i class="fas fa-users"></i></div>
-          <div><div class="stat-value">${s.totalUsers}</div><div class="stat-label">Customers</div></div>
+          <div><div class="stat-value">${s.totalUsers || 0}</div><div class="stat-label">Customers</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon orange"><i class="fas fa-dollar-sign"></i></div>
-          <div><div class="stat-value">$${s.totalRevenue.toFixed(0)}</div><div class="stat-label">Total Revenue</div></div>
+          <div><div class="stat-value">$${formatMoney(s.totalRevenue, 0)}</div><div class="stat-label">Total Revenue</div></div>
         </div>
       </div>
 
@@ -118,14 +125,14 @@ async function loadDashboard() {
           <div class="card-header"><h3><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px"></i>Sales Overview</h3></div>
           <div class="card-body">
             <div class="mini-chart">
-              ${data.monthlySales.map(m => `
-                <div class="bar" style="height:${Math.max(10, (m.revenue / maxRevenue) * 100)}%" title="${m.month}: $${m.revenue.toFixed(0)} (${m.orders} orders)">
+              ${monthlySales.map(m => `
+                <div class="bar" style="height:${Math.max(10, (Number(m.revenue || 0) / maxRevenue) * 100)}%" title="${m.month || 'Month'}: $${formatMoney(m.revenue, 0)} (${m.orders || 0} orders)">
                 </div>
               `).join('')}
-              ${data.monthlySales.length === 0 ? '<div style="text-align:center;width:100%;color:var(--gray)">No data yet</div>' : ''}
+              ${monthlySales.length === 0 ? '<div style="text-align:center;width:100%;color:var(--gray)">No data yet</div>' : ''}
             </div>
             <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--gray);margin-top:8px">
-              ${data.monthlySales.map(m => `<span>${m.month.split('-')[1]}</span>`).join('')}
+              ${monthlySales.map(m => `<span>${(m.month || '').split('-')[1] || ''}</span>`).join('')}
             </div>
           </div>
         </div>
@@ -136,15 +143,15 @@ async function loadDashboard() {
             <div style="display:flex;flex-direction:column;gap:12px">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span><i class="fas fa-clock" style="color:var(--warning)"></i> Pending</span>
-                <span class="badge badge-pending">${s.pendingOrders}</span>
+                <span class="badge badge-pending">${s.pendingOrders || 0}</span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span><i class="fas fa-cog" style="color:var(--info)"></i> Processing</span>
-                <span class="badge badge-processing">${s.processingOrders}</span>
+                <span class="badge badge-processing">${s.processingOrders || 0}</span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span><i class="fas fa-check-circle" style="color:var(--success)"></i> Delivered</span>
-                <span class="badge badge-delivered">${s.deliveredOrders}</span>
+                <span class="badge badge-delivered">${s.deliveredOrders || 0}</span>
               </div>
             </div>
           </div>
@@ -157,17 +164,17 @@ async function loadDashboard() {
           <table class="data-table">
             <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Payment</th><th>Date</th></tr></thead>
             <tbody>
-              ${data.recentOrders.map(o => `
+              ${recentOrders.map(o => `
                 <tr>
                   <td><strong>#${o.id}</strong></td>
-                  <td>${o.customer_name}</td>
-                  <td><strong>$${o.total_amount.toFixed(2)}</strong></td>
-                  <td><span class="badge badge-${o.status}">${o.status}</span></td>
-                  <td><span class="badge badge-${o.payment_status}">${o.payment_status}</span></td>
-                  <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                  <td>${o.customer_name || 'Customer'}</td>
+                  <td><strong>$${formatMoney(o.total_amount)}</strong></td>
+                  <td><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
+                  <td><span class="badge badge-${o.payment_status || 'unpaid'}">${o.payment_status || 'unpaid'}</span></td>
+                  <td>${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                 </tr>
               `).join('')}
-              ${data.recentOrders.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray)">No orders yet</td></tr>' : ''}
+              ${recentOrders.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray)">No orders yet</td></tr>' : ''}
             </tbody>
           </table>
         </div>
@@ -179,15 +186,15 @@ async function loadDashboard() {
           <table class="data-table">
             <thead><tr><th>Product</th><th>Price</th><th>Sold</th><th>Revenue</th></tr></thead>
             <tbody>
-              ${data.topProducts.map(p => `
+              ${topProducts.map(p => `
                 <tr>
                   <td style="display:flex;align-items:center;gap:10px">
                     <img src="${p.image || 'https://via.placeholder.com/40'}" onerror="this.src='https://via.placeholder.com/40'">
                     <span>${p.name}</span>
                   </td>
-                  <td>$${p.price.toFixed(2)}</td>
-                  <td>${p.total_sold}</td>
-                  <td><strong>$${p.total_revenue.toFixed(2)}</strong></td>
+                  <td>$${formatMoney(p.price)}</td>
+                  <td>${p.total_sold || 0}</td>
+                  <td><strong>$${formatMoney(p.total_revenue)}</strong></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -204,6 +211,7 @@ async function loadProducts() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/admin/products?limit=50');
+    const products = data.products || [];
     area.innerHTML = `
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
         <input type="text" placeholder="Search products..." style="padding:10px 16px;border:1px solid var(--gray-lighter);border-radius:var(--radius);width:300px" onkeyup="if(event.key==='Enter')searchAdminProducts(this.value)">
@@ -214,14 +222,14 @@ async function loadProducts() {
           <table class="data-table">
             <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.products.map(p => `
+              ${products.map(p => `
                 <tr>
                   <td><img src="${p.image || 'https://via.placeholder.com/40'}" onerror="this.src='https://via.placeholder.com/40'"></td>
                   <td><strong>${p.name}</strong><br><small style="color:var(--gray)">${p.brand || ''}</small></td>
                   <td>${p.category_name || '-'}</td>
-                  <td>$${p.price.toFixed(2)}</td>
-                  <td><span style="color:${p.stock > 0 ? 'var(--success)' : 'var(--danger)'}">${p.stock}</span></td>
-                  <td>⭐ ${p.rating}</td>
+                  <td>$${formatMoney(p.price)}</td>
+                  <td><span style="color:${(p.stock || 0) > 0 ? 'var(--success)' : 'var(--danger)'}">${p.stock || 0}</span></td>
+                  <td>⭐ ${p.rating || 0}</td>
                   <td><span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
                   <td>
                     <button class="btn btn-sm btn-outline" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
@@ -243,14 +251,14 @@ async function searchAdminProducts(q) {
     const data = await adminApi(`/admin/products?search=${encodeURIComponent(q)}&limit=50`);
     const table = area.querySelector('tbody');
     if (table) {
-      table.innerHTML = data.products.map(p => `
+      table.innerHTML = (data.products || []).map(p => `
         <tr>
           <td><img src="${p.image || 'https://via.placeholder.com/40'}" onerror="this.src='https://via.placeholder.com/40'"></td>
           <td><strong>${p.name}</strong></td>
           <td>${p.category_name || '-'}</td>
-          <td>$${p.price.toFixed(2)}</td>
-          <td>${p.stock}</td>
-          <td>⭐ ${p.rating}</td>
+          <td>$${formatMoney(p.price)}</td>
+          <td>${p.stock || 0}</td>
+          <td>⭐ ${p.rating || 0}</td>
           <td><span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
           <td>
             <button class="btn btn-sm btn-outline" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
@@ -345,18 +353,19 @@ async function loadOrders() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/admin/orders?limit=50');
+    const orders = data.orders || [];
     area.innerHTML = `
       <div class="card">
         <div style="overflow-x:auto">
           <table class="data-table">
             <thead><tr><th>ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Payment</th><th>Date</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.orders.map(o => `
+              ${orders.map(o => `
                 <tr>
                   <td><strong>#${o.id}</strong></td>
-                  <td>${o.customer_name}<br><small style="color:var(--gray)">${o.customer_email}</small></td>
+                  <td>${o.customer_name || 'Customer'}<br><small style="color:var(--gray)">${o.customer_email || ''}</small></td>
                   <td>${(o.items || []).length} items</td>
-                  <td><strong>$${o.total_amount.toFixed(2)}</strong></td>
+                  <td><strong>$${formatMoney(o.total_amount)}</strong></td>
                   <td>
                     <select class="badge" style="border:none;cursor:pointer" onchange="updateOrderStatus(${o.id}, this.value)">
                       ${['pending','confirmed','processing','shipped','delivered','cancelled'].map(s => `<option value="${s}" ${o.status===s?'selected':''}>${s}</option>`).join('')}
@@ -367,7 +376,7 @@ async function loadOrders() {
                       ${['unpaid','paid','refunded','failed'].map(s => `<option value="${s}" ${o.payment_status===s?'selected':''}>${s}</option>`).join('')}
                     </select>
                   </td>
-                  <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                  <td>${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                   <td><button class="btn btn-sm btn-outline" onclick="viewOrder(${o.id})"><i class="fas fa-eye"></i></button></td>
                 </tr>
               `).join('')}
@@ -396,7 +405,7 @@ async function updatePaymentStatus(id, payment_status) {
 async function viewOrder(id) {
   try {
     const data = await adminApi(`/orders/${id}`);
-    const o = data.order;
+    const o = data.order || {};
     const modal = document.createElement('div');
     modal.className = 'modal-overlay active';
     modal.innerHTML = `
@@ -408,16 +417,16 @@ async function viewOrder(id) {
           <div><strong>Status:</strong> <span class="badge badge-${o.status}">${o.status}</span></div>
           <div><strong>Payment:</strong> <span class="badge badge-${o.payment_status}">${o.payment_status}</span></div>
           <div><strong>Method:</strong> ${o.payment_method || 'N/A'}</div>
-          <div><strong>Date:</strong> ${new Date(o.created_at).toLocaleString()}</div>
+          <div><strong>Date:</strong> ${o.created_at ? new Date(o.created_at).toLocaleString() : '-'}</div>
         </div>
         <h4 style="margin:12px 0">Shipping</h4>
-        <p>${o.shipping_name}, ${o.shipping_address}, ${o.shipping_city} — ${o.shipping_phone}</p>
+        <p>${o.shipping_name || ''}, ${o.shipping_address || ''}, ${o.shipping_city || ''} — ${o.shipping_phone || ''}</p>
         <h4 style="margin:12px 0">Items</h4>
         ${(o.items||[]).map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-lightest)">
           <img src="${i.image}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" onerror="this.src='https://via.placeholder.com/40'">
-          <div style="flex:1">${i.name}</div><div>×${i.quantity}</div><div><strong>$${i.total.toFixed(2)}</strong></div>
+          <div style="flex:1">${i.name}</div><div>×${i.quantity}</div><div><strong>$${formatMoney(i.total)}</strong></div>
         </div>`).join('')}
-        <div style="text-align:right;margin-top:12px;font-size:1.2rem;font-weight:700">Total: $${o.total_amount.toFixed(2)}</div>
+        <div style="text-align:right;margin-top:12px;font-size:1.2rem;font-weight:700">Total: $${formatMoney(o.total_amount)}</div>
         <button class="btn btn-outline btn-full" style="margin-top:16px" onclick="this.closest('.modal-overlay').remove()">Close</button>
       </div>
     `;
@@ -432,19 +441,20 @@ async function loadUsers() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/admin/users?limit=50');
+    const users = data.users || [];
     area.innerHTML = `
       <div class="card">
         <div style="overflow-x:auto">
           <table class="data-table">
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.users.map(u => `
+              ${users.map(u => `
                 <tr>
                   <td><strong>${u.name}</strong></td>
                   <td>${u.email}</td>
                   <td><span class="badge ${u.role === 'admin' ? 'badge-processing' : u.role === 'seller' ? 'badge-confirmed' : 'badge-active'}">${u.role}</span></td>
                   <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-                  <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                  <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                   <td>
                     <select style="padding:4px 8px;border:1px solid var(--gray-lighter);border-radius:6px;font-size:0.8rem" onchange="updateUser(${u.id}, 'role', this.value)">
                       ${['customer','seller','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
@@ -482,6 +492,7 @@ async function loadCategories() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/categories');
+    const categories = data.categories || [];
     area.innerHTML = `
       <div style="margin-bottom:20px">
         <button class="btn btn-primary" onclick="showCategoryModal()"><i class="fas fa-plus"></i> Add Category</button>
@@ -491,12 +502,12 @@ async function loadCategories() {
           <table class="data-table">
             <thead><tr><th>Image</th><th>Name</th><th>Slug</th><th>Products</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.categories.map(c => `
+              ${categories.map(c => `
                 <tr>
                   <td><img src="${c.image || 'https://via.placeholder.com/40'}" onerror="this.src='https://via.placeholder.com/40'"></td>
                   <td><strong>${c.name}</strong></td>
                   <td>${c.slug}</td>
-                  <td>${c.product_count}</td>
+                  <td>${c.product_count || 0}</td>
                   <td>
                     <button class="btn btn-sm btn-outline" onclick="showCategoryModal(${JSON.stringify(c).replace(/"/g, '&quot;')})"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-sm btn-danger" onclick="deleteCategory(${c.id})"><i class="fas fa-trash"></i></button>
@@ -558,6 +569,7 @@ async function loadCoupons() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/admin/coupons');
+    const coupons = data.coupons || [];
     area.innerHTML = `
       <div style="margin-bottom:20px">
         <button class="btn btn-primary" onclick="showCouponModal()"><i class="fas fa-plus"></i> Add Coupon</button>
@@ -567,13 +579,13 @@ async function loadCoupons() {
           <table class="data-table">
             <thead><tr><th>Code</th><th>Description</th><th>Discount</th><th>Min Order</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.coupons.map(c => `
+              ${coupons.map(c => `
                 <tr>
                   <td><strong style="color:var(--primary)">${c.code}</strong></td>
                   <td>${c.description}</td>
-                  <td>${c.discount_type === 'percentage' ? c.discount_value + '%' : '$' + c.discount_value}</td>
-                  <td>$${c.min_order_amount}</td>
-                  <td>${c.used_count}${c.max_uses ? '/' + c.max_uses : ''}</td>
+                  <td>${c.discount_type === 'percentage' ? c.discount_value + '%' : '$' + formatMoney(c.discount_value)}</td>
+                  <td>$${formatMoney(c.min_order_amount)}</td>
+                  <td>${c.used_count || 0}${c.max_uses ? '/' + c.max_uses : ''}</td>
                   <td><span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
                   <td><button class="btn btn-sm btn-danger" onclick="deleteCoupon(${c.id})"><i class="fas fa-trash"></i></button></td>
                 </tr>
@@ -645,17 +657,18 @@ async function loadReviews() {
   area.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
   try {
     const data = await adminApi('/admin/reviews');
+    const reviews = data.reviews || [];
     area.innerHTML = `
       <div class="card">
         <div style="overflow-x:auto">
           <table class="data-table">
             <thead><tr><th>Product</th><th>User</th><th>Rating</th><th>Comment</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.reviews.map(r => `
+              ${reviews.map(r => `
                 <tr>
                   <td>${r.product_name}</td>
                   <td>${r.user_name}</td>
-                  <td>${'⭐'.repeat(r.rating)}</td>
+                  <td>${'⭐'.repeat(r.rating || 5)}</td>
                   <td style="max-width:300px">${r.title ? '<strong>' + r.title + '</strong><br>' : ''}${r.comment || '-'}</td>
                   <td><span class="badge ${r.is_approved ? 'badge-active' : 'badge-pending'}">${r.is_approved ? 'Approved' : 'Pending'}</span></td>
                   <td>
@@ -665,7 +678,7 @@ async function loadReviews() {
                   </td>
                 </tr>
               `).join('')}
-              ${data.reviews.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray)">No reviews</td></tr>' : ''}
+              ${reviews.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray)">No reviews</td></tr>' : ''}
             </tbody>
           </table>
         </div>
