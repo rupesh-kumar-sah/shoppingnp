@@ -17,6 +17,7 @@ function navigateTo(page, id = null) {
     case 'orders': renderOrdersPage(); break;
     case 'wishlist': renderWishlistPage(); break;
     case 'profile': renderProfilePage(); break;
+    case 'seller': renderSellerDashboard(); break;
     default: renderHomePage();
   }
 }

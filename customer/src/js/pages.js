@@ -596,3 +596,132 @@ async function renderProfilePage() {
     main.innerHTML = `<div class="container section">${renderEmptyState('exclamation-triangle', 'Error', err.message, 'Try Again', "renderProfilePage()")}</div>`;
   }
 }
+
+async function renderSellerDashboard() {
+  const main = document.getElementById('main-content');
+  if (!isLoggedIn() || (store.user.role !== 'seller' && store.user.role !== 'admin')) {
+    showToast('Seller or Admin access required', 'error');
+    navigateTo('home');
+    return;
+  }
+  main.innerHTML = renderLoading();
+
+  try {
+    const data = await api.products.getAll('limit=50');
+    const myProducts = data.products.filter(p => store.user.role === 'admin' || p.seller_id === store.user.id);
+
+    main.innerHTML = `
+      <div class="profile-page">
+        <div class="container">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+            <h1><i class="fas fa-store" style="color:var(--primary)"></i> Seller Vendor Portal</h1>
+            <button class="btn btn-primary" onclick="showSellerAddProductModal()"><i class="fas fa-plus"></i> Add New Product</button>
+          </div>
+          <div class="stats-grid" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:20px;margin-bottom:28px">
+            <div class="stat-card" style="background:white;padding:20px;border-radius:12px;border:1px solid var(--gray-lightest)">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--primary)">${myProducts.length}</div>
+              <div style="color:var(--gray)">My Active Products</div>
+            </div>
+            <div class="stat-card" style="background:white;padding:20px;border-radius:12px;border:1px solid var(--gray-lightest)">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--success)">${myProducts.reduce((sum, p) => sum + p.stock, 0)}</div>
+              <div style="color:var(--gray)">Total Inventory Units</div>
+            </div>
+            <div class="stat-card" style="background:white;padding:20px;border-radius:12px;border:1px solid var(--gray-lightest)">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--secondary)">${(myProducts.reduce((sum, p) => sum + p.rating, 0) / (myProducts.length || 1)).toFixed(1)} ⭐</div>
+              <div style="color:var(--gray)">Average Rating</div>
+            </div>
+          </div>
+
+          <div style="background:white;border-radius:16px;padding:24px;border:1px solid var(--gray-lightest)">
+            <h3 style="margin-bottom:16px">My Products Inventory</h3>
+            <div style="overflow-x:auto">
+              <table class="data-table" style="width:100%">
+                <thead>
+                  <tr style="text-align:left;background:var(--light)">
+                    <th style="padding:10px">Image</th>
+                    <th style="padding:10px">Name</th>
+                    <th style="padding:10px">Category</th>
+                    <th style="padding:10px">Price</th>
+                    <th style="padding:10px">Stock</th>
+                    <th style="padding:10px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${myProducts.map(p => `
+                    <tr style="border-bottom:1px solid var(--gray-lightest)">
+                      <td style="padding:10px"><img src="${p.image}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" onerror="this.src='https://via.placeholder.com/40'"></td>
+                      <td style="padding:10px"><strong>${p.name}</strong></td>
+                      <td style="padding:10px">${p.category_name || '-'}</td>
+                      <td style="padding:10px"><strong>$${p.price.toFixed(2)}</strong></td>
+                      <td style="padding:10px"><span style="color:${p.stock > 0 ? 'var(--success)' : 'var(--danger)'}">${p.stock}</span></td>
+                      <td style="padding:10px">
+                        <button class="btn btn-sm btn-outline" onclick="navigateTo('product', ${p.id})"><i class="fas fa-eye"></i> View</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                  ${myProducts.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray)">No products listed yet. Click Add New Product!</td></tr>' : ''}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    main.innerHTML = `<div class="container section">${renderEmptyState('exclamation-triangle', 'Error', err.message, 'Try Again', "renderSellerDashboard()")}</div>`;
+  }
+}
+
+function showSellerAddProductModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.innerHTML = `
+    <div class="modal">
+      <h2>Add Product (Seller Portal)</h2>
+      <form onsubmit="sellerCreateProduct(event)">
+        <div class="form-group"><label>Product Name *</label><input type="text" id="sp-name" required placeholder="e.g. Wireless Mouse"></div>
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>Price ($) *</label><input type="number" step="0.01" id="sp-price" required></div>
+          <div class="form-group"><label>Stock Quantity</label><input type="number" id="sp-stock" value="10"></div>
+        </div>
+        <div class="form-group"><label>Category</label>
+          <select id="sp-category" style="width:100%;padding:10px;border:2px solid var(--gray-lightest);border-radius:6px">
+            <option value="1">Electronics</option>
+            <option value="2">Fashion</option>
+            <option value="3">Home & Living</option>
+            <option value="4">Sports & Outdoors</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Image URL</label><input type="url" id="sp-image" placeholder="https://images.unsplash.com/..."></div>
+        <div class="form-group"><label>Description</label><textarea id="sp-desc" rows="2" style="width:100%;padding:8px;border:2px solid var(--gray-lightest);border-radius:6px"></textarea></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+          <button type="button" class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Product</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function sellerCreateProduct(e) {
+  e.preventDefault();
+  try {
+    await api.products.addReview;
+    await apiRequest('/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: document.getElementById('sp-name').value,
+        price: parseFloat(document.getElementById('sp-price').value),
+        stock: parseInt(document.getElementById('sp-stock').value) || 10,
+        category_id: parseInt(document.getElementById('sp-category').value) || 1,
+        image: document.getElementById('sp-image').value || 'https://via.placeholder.com/400',
+        description: document.getElementById('sp-desc').value || ''
+      })
+    });
+    showToast('Product added successfully to catalog!', 'success');
+    document.querySelector('.modal-overlay')?.remove();
+    renderSellerDashboard();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+

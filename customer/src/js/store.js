@@ -57,7 +57,8 @@ function updateAuthUI() {
       <a href="#" onclick="navigateTo('profile')"><i class="fas fa-user"></i> My Profile</a>
       <a href="#" onclick="navigateTo('orders')"><i class="fas fa-box"></i> My Orders</a>
       <a href="#" onclick="navigateTo('wishlist')"><i class="fas fa-heart"></i> Wishlist</a>
-      ${store.user.role === 'admin' ? '<a href="../admin/index.html" target="_blank"><i class="fas fa-cog"></i> Admin Panel</a>' : ''}
+      ${['seller', 'admin'].includes(store.user.role) ? '<a href="#" onclick="navigateTo(\'seller\')"><i class="fas fa-store"></i> Seller Portal</a>' : ''}
+      ${store.user.role === 'admin' ? '<a href="admin/index.html" target="_blank"><i class="fas fa-cog"></i> Admin Panel</a>' : ''}
       <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
     `;
   } else {
